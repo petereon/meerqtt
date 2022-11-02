@@ -1,1 +1,1 @@
-from meerqtt.__meerqtt import MeerQTT, Topic  # noqa
+from meerqtt.__meerqtt import MeerQTT  # noqa

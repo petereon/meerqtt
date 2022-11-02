@@ -94,6 +94,7 @@ select = ["B","E","F","W","T4","B9"]
 [tool.poetry.dependencies]
 python = "^3.9"
 paho-mqtt = "^1.6.1"
+pydantic = "^1.10.2"
 
 
 [tool.poetry.dev-dependencies]

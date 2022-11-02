@@ -1,14 +1,10 @@
 import logging
+import re
 from typing import Any, Callable, Dict, Literal, TypeAlias, Union
 
 import paho.mqtt.client as paho_mqtt  # type: ignore
 
-from meerqtt.__internals import CustomFormatter
-
-
-class Topic(str):
-    pass
-
+from meerqtt.__internals import CustomFormatter, apply_arguments
 
 UserData: TypeAlias = Any
 
@@ -47,7 +43,7 @@ class MeerQTT:
 
             self.logger.addHandler(ch)
 
-        self.logger.debug(f'Connecting to {host}:{port}')
+        self.logger.info(f'Connecting to {host}:{port}')
 
         self.paho_client = paho_mqtt.Client(
             client_id=client_id,
@@ -71,15 +67,32 @@ class MeerQTT:
         )
 
     def __handle_message(self, client: paho_mqtt.Client, userdata: UserData, msg: paho_mqtt.MQTTMessage) -> None:
-        handler = self._topic_handler_mapping.get(msg.topic)
-        if handler:
-            self.logger.info(f'TOPIC {msg.topic}')
-            handler(msg.payload)
-        else:
-            raise RuntimeError(f'No handler found for topic `{msg.topic}`')
+        for topic, handler in self._topic_handler_mapping.items():
+            # Handle not mixing kwargs and vargs
+            # Handle + based paths as vargs
+            # Maybe handle # based paths
+            # Handle just message
+            topic_regex = re.sub(r'\{(.*?)\}', '(.+?)', topic)
+            values = re.findall(f'^{topic_regex}$', msg.topic)
+            if values:
+                params = re.findall(r'\{(.*?)\}', topic)
+                params = list(filter(''.__ne__, params))
+                if len(params) > 0:
+                    success, exc = apply_arguments(
+                        fn=handler,
+                        arguments={param: value for param, value in zip(params, values[0])},
+                        message=msg.payload,
+                    )
+                else:
+                    success, exc = apply_arguments(fn=handler, arguments=list(values[0]), message=msg.payload)
+
+                if success:
+                    self.logger.info(f'TOPIC {topic} - Success')
+                else:
+                    self.logger.error(f'TOPIC {topic} - Error: {exc}')
 
     def subscribe(self, topic: str) -> Callable[[Callable], None]:
-        self.paho_client.subscribe(topic=topic)
+        self.paho_client.subscribe(topic=re.sub(r'\{(.*?)\}', '+', topic))
 
         def __subscribe(fn: Callable) -> None:
             self._topic_handler_mapping[topic] = fn
@@ -92,5 +105,4 @@ class MeerQTT:
     def start(self, log_level: int = logging.INFO) -> None:
         logging.basicConfig(level=log_level)
         self.paho_client.on_message = self.__handle_message
-        # self.paho_client.on_message = print
         self.paho_client.loop_forever()
