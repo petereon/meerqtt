@@ -8,7 +8,7 @@ class Person(pydantic.BaseModel):
     name: str
     age: int
 
-@meerqtt.subscribe('/sensor/{sensor_number}/{variable}')
+@meerqtt.subscribe('/sensor/+/{variable}')
 def _(sensor_number: int, variable: str, person: Person):
     print(sensor_number, variable, person)
 

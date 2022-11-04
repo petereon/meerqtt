@@ -29,32 +29,32 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-def apply_arguments(fn: Callable, arguments: Union[List[Any], Dict[str, Any]], message: bytes) -> Tuple[bool, Union[Exception, None]]:
-    fn_signature = signature(fn).parameters
-    if isinstance(arguments, dict):
-        keys = list(set(fn_signature.keys()) - set(arguments.keys()))
-        if len(keys) == 0:
-            return False, ValueError('No parameter to handle the message is provided')
-        arguments[keys[0]] = message
-        for param, typ in fn_signature.items():
-            if issubclass(typ.annotation, BaseModel):
-                try:
-                    arguments[param] = json.loads(arguments[param])
-                except KeyError:
-                    return (False, ValueError(f'Value for parameter `{param}` not provided'))
-        try:
-            validate_arguments(fn)(**arguments)
-            return (True, None)
-        except Exception as e:
-            return (False, e)
-    else:
-        arguments.append(message)
+def apply_arguments(fn: Callable, args: List[Any], kwargs: Dict[str, Any], message: bytes) -> Tuple[bool, Union[Exception, None]]:
 
-        for index, (_, typ) in enumerate(fn_signature.items()):
-            if issubclass(typ.annotation, BaseModel):
-                arguments[index] = json.loads(arguments[index])
+    fn_kwargs = {}
+
+    fn_signature_items_list = list(signature(fn).parameters.items())
+    fn_signature_items_list_args = fn_signature_items_list[: len(args)]
+
+    fn_signature_items_list_kwargs = fn_signature_items_list[len(args) :]
+
+    for arg_value, (key, type_wrapper) in zip(args, fn_signature_items_list_args):
+        fn_kwargs[key] = json.loads(arg_value) if issubclass(type_wrapper.annotation, BaseModel) else arg_value
+
+    message_set = False
+
+    for key_signature, type_wrapper in fn_signature_items_list_kwargs:
         try:
-            validate_arguments(fn)(*arguments)
-            return (True, None)
-        except Exception as e:
-            return (False, e)
+            kwarg_value = kwargs[key_signature]
+            fn_kwargs[key_signature] = json.loads(kwarg_value) if issubclass(type_wrapper.annotation, BaseModel) else kwarg_value
+        except KeyError:
+            if not message_set:
+                fn_kwargs[key_signature] = json.loads(message) if issubclass(type_wrapper.annotation, BaseModel) else message
+            else:
+                return False, ValueError(f'No argument provided for parameter `{key_signature}`')
+    print(fn_kwargs)
+    try:
+        validate_arguments(fn)(**fn_kwargs)
+        return True, None
+    except Exception as e:
+        return False, e

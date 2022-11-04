@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, Callable, Dict, Literal, TypeAlias, Union
+from typing import Any, Callable, Dict, List, Literal, TypeAlias, Union
 
 import paho.mqtt.client as paho_mqtt  # type: ignore
 
@@ -68,28 +68,26 @@ class MeerQTT:
 
     def __handle_message(self, client: paho_mqtt.Client, userdata: UserData, msg: paho_mqtt.MQTTMessage) -> None:
         for topic, handler in self._topic_handler_mapping.items():
-            # Handle not mixing kwargs and vargs
-            # Handle + based paths as vargs
-            # Maybe handle # based paths
-            # Handle just message
-            topic_regex = re.sub(r'\{(.*?)\}', '(.+?)', topic)
+            topic_cleaned = topic.replace('+', '{}')
+            topic_regex = re.sub(r'\{(.*?)\}', '(.+?)', topic_cleaned)
             values = re.findall(f'^{topic_regex}$', msg.topic)
+            args: List[Any] = []
+            kwargs: Dict[str, Any] = {}
             if values:
-                params = re.findall(r'\{(.*?)\}', topic)
-                params = list(filter(''.__ne__, params))
-                if len(params) > 0:
-                    success, exc = apply_arguments(
-                        fn=handler,
-                        arguments={param: value for param, value in zip(params, values[0])},
-                        message=msg.payload,
-                    )
-                else:
-                    success, exc = apply_arguments(fn=handler, arguments=list(values[0]), message=msg.payload)
+                params = re.findall(r'\{(.*?)\}', topic_cleaned)
+                for param, value in zip(params, values[0]):
+                    if param == '':
+                        args.append(value)
+                    else:
+                        kwargs[param] = value
 
-                if success:
-                    self.logger.info(f'TOPIC {topic} - Success')
-                else:
-                    self.logger.error(f'TOPIC {topic} - Error: {exc}')
+            success, exc = apply_arguments(fn=handler, args=args, kwargs=kwargs, message=msg.payload)
+
+            if success:
+                self.logger.info(f'TOPIC {msg.topic}')
+                self.logger.debug(f'Caught by {topic}')
+            else:
+                self.logger.error(f'TOPIC {topic} - Error: {exc}')
 
     def subscribe(self, topic: str) -> Callable[[Callable], None]:
         self.paho_client.subscribe(topic=re.sub(r'\{(.*?)\}', '+', topic))
