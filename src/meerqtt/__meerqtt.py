@@ -70,24 +70,25 @@ class MeerQTT:
         for topic, handler in self._topic_handler_mapping.items():
             topic_cleaned = topic.replace('+', '{}')
             topic_regex = re.sub(r'\{(.*?)\}', '(.+?)', topic_cleaned)
-            values = re.findall(f'^{topic_regex}$', msg.topic)
-            args: List[Any] = []
-            kwargs: Dict[str, Any] = {}
-            if values:
-                params = re.findall(r'\{(.*?)\}', topic_cleaned)
-                for param, value in zip(params, values[0]):
-                    if param == '':
-                        args.append(value)
-                    else:
-                        kwargs[param] = value
+            if re.match(topic_regex, msg.topic):
+                values = re.findall(f'^{topic_regex}$', msg.topic)
+                args: List[Any] = []
+                kwargs: Dict[str, Any] = {}
+                if values:
+                    params = re.findall(r'\{(.*?)\}', topic_cleaned)
+                    for param, value in zip(params, values[0]):
+                        if param == '':
+                            args.append(value)
+                        else:
+                            kwargs[param] = value
 
-            success, exc = apply_arguments(fn=handler, args=args, kwargs=kwargs, message=msg.payload)
+                success, exc = apply_arguments(fn=handler, args=args, kwargs=kwargs, message=msg.payload)
 
-            if success:
-                self.logger.info(f'TOPIC {msg.topic}')
-                self.logger.debug(f'Caught by {topic}')
-            else:
-                self.logger.error(f'TOPIC {topic} - Error: {exc}')
+                if success:
+                    self.logger.info(f'TOPIC {msg.topic}')
+                    self.logger.debug(f'Caught by {topic}')
+                else:
+                    self.logger.error(f'TOPIC {topic} - Error: {exc}')
 
     def subscribe(self, topic: str) -> Callable[[Callable], None]:
         self.paho_client.subscribe(topic=re.sub(r'\{(.*?)\}', '+', topic))
