@@ -17,10 +17,6 @@ def _(sensor_number: int, data: Data):
     with open('data.csv', 'a') as fh:
         fh.write(f'\n{sensor_number},{data.humidity},{data.temperature}')
 
-@meerqtt.subscribe('/car/1/weight')
-def _(value: float):
-    print(value)
-
 @meerqtt.subscribe('/car/{number}/{measurement}')
 def _(measurement: str, number: int, value: float):
     if number not in cars:
