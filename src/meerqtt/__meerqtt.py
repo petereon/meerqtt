@@ -43,7 +43,7 @@ class MeerQTT:
 
             self.logger.addHandler(ch)
 
-        self.logger.info(f'Connecting to {host}:{port}')
+        self.logger.debug(f'Connecting to {host}:{port}')
 
         self.paho_client = paho_mqtt.Client(
             client_id=client_id,
@@ -65,6 +65,8 @@ class MeerQTT:
             clean_start=clean_start,
             properties=properties,
         )
+
+        self.logger.info(f'Connected to {host}:{port}')
 
     def __handle_message(self, client: paho_mqtt.Client, userdata: UserData, msg: paho_mqtt.MQTTMessage) -> None:
         for topic, handler in self._topic_handler_mapping.items():
@@ -90,8 +92,14 @@ class MeerQTT:
                 else:
                     self.logger.error(f'TOPIC {topic} - Error: {exc}')
 
-    def subscribe(self, topic: str) -> Callable[[Callable], None]:
-        self.paho_client.subscribe(topic=re.sub(r'\{(.*?)\}', '+', topic))
+    def subscribe(
+        self,
+        topic: str,
+        qos: Literal[0, 1, 2] = 0,
+        options: Union[paho_mqtt.SubscribeOptions, None] = None,
+        properties: Union[paho_mqtt.Properties, None] = None,
+    ) -> Callable[[Callable], None]:
+        self.paho_client.subscribe(topic=re.sub(r'\{(.*?)\}', '+', topic), qos=qos, options=options, properties=properties)
 
         def __subscribe(fn: Callable) -> None:
             self._topic_handler_mapping[topic] = fn
