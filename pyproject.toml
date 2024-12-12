@@ -103,7 +103,7 @@ pydantic = "^1.10.2"
 black = { version = "*", allow-prereleases = true }
 mypy = "^0.942"
 flake8 = "<5.0.0"
-pyproject-flake8 = "0.0.1a4"
+pyproject-flake8 = "0.0.1a5"
 
 ## Bugs
 flake8-simplify = '*'
