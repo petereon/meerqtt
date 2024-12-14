@@ -126,7 +126,7 @@ isort = '*'
 unify = "*"
 
 ## Performance
-perflint = "^0.7.3"
+perflint = "^0.8.0"
 
 # Testing
 ward = "^0.66.1-beta.0"
