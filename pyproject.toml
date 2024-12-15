@@ -102,7 +102,7 @@ pydantic = "^1.10.2"
 # Code Scanning and Formatting
 black = { version = "*", allow-prereleases = true }
 mypy = "^0.942"
-flake8 = "<5.0.0"
+flake8 = "<7.1.2"
 pyproject-flake8 = "0.0.1a4"
 
 ## Bugs
