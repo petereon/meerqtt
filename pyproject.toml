@@ -101,7 +101,7 @@ pydantic = "^1.10.2"
 [tool.poetry.dev-dependencies]
 # Code Scanning and Formatting
 black = { version = "*", allow-prereleases = true }
-mypy = "^0.942"
+mypy = "^1.0.0"
 flake8 = "<5.0.0"
 pyproject-flake8 = "0.0.1a4"
 
