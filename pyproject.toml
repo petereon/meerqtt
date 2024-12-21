@@ -149,4 +149,4 @@ pre-commit = "*"
 detect-secrets = "^1.2.0"
 
 # Utils
-watchdog = "^2.1.9"
+watchdog = "^6.0.0"
